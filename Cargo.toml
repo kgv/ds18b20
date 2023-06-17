@@ -1,0 +1,22 @@
+[package]
+categories = ["embedded", "hardware-support", "no-std"]
+description = "A 1-Wire driver for interfacing a microcontroller to the DS18B20, DS18S20, and DS1822 1-Wire temperature sensors."
+edition = "2021"
+keywords = [
+    "ds18b20",
+    "embedded-hal-driver",
+    "onewire",
+    "sensor",
+    "temperature",
+]
+license = "MIT/Apache-2.0"
+name = "ds18b20"
+readme = "README.md"
+repository = "https://github.com/kgv/ds18b20"
+version = "0.0.1"
+
+[dependencies]
+embedded-hal = "1.0.0-alpha.10"
+# one_wire = { path = "C:\\Users\\9\\git\\embedded\\one_wire" }
+one_wire = { git = "https://github.com/kgv/one_wire" }
+thiserror = { version = "1.0.38", package = "thiserror-core", default-features = false }
