@@ -1,5 +1,4 @@
 use crate::{Command, Driver, Error, Pin, Result, Rom};
-use core::convert::Infallible;
 use embedded_hal::delay::DelayNs;
 
 pub const COMMAND_ALARM_SEARCH: u8 = 0xEC;
@@ -57,7 +56,7 @@ pub struct MatchRom {
 }
 
 impl Command for MatchRom {
-    type Output = Result<(), Infallible>;
+    type Output = Result<()>;
 
     fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         driver.write_byte(COMMAND_ROM_MATCH)?;
@@ -79,7 +78,7 @@ impl Command for MatchRom {
 pub struct SkipRom;
 
 impl Command for SkipRom {
-    type Output = Result<(), Infallible>;
+    type Output = Result<()>;
 
     fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         driver.write_byte(COMMAND_ROM_SKIP)?;

@@ -3,18 +3,16 @@
 //! [1-Wire](https://www.maximintegrated.com/en/design/technical-documents/app-notes/1/126.html)
 
 #![no_std]
-#![feature(decl_macro)]
 #![feature(error_in_core)]
 #![feature(trait_alias)]
 
 pub use self::{
-    command::{Command, Commander},
+    command::Command,
     error::{Error, Result},
     rom::Rom,
     scratchpad::Configuration,
 };
 
-use core::convert::Infallible;
 use embedded_hal::{
     delay::DelayNs,
     digital::{ErrorType, InputPin, OutputPin},
@@ -24,7 +22,7 @@ use standard::*;
 pub const FAMILY_CODE: u8 = 0x28;
 
 /// Alias for `InputPin` + `OutputPin` + `ErrorType`.
-pub trait Pin = InputPin + OutputPin + ErrorType<Error = Infallible>;
+pub trait Pin = InputPin + OutputPin + ErrorType<Error = Error>;
 
 /// Ds18b20
 pub struct Ds18b20 {
@@ -53,6 +51,12 @@ pub struct Driver<T, U> {
     pin: T,
     delay: U,
     speed: Speed,
+}
+
+impl<T: Pin, U: DelayNs> Driver<T, U> {
+    pub fn run<C: Command>(&mut self, command: C) -> C::Output {
+        command.execute(self)
+    }
 }
 
 impl<T: InputPin + ErrorType, U> Driver<T, U> {
@@ -209,10 +213,9 @@ mod overdrive {
     pub(super) const J: f32 = 40.0;
 }
 
-pub mod commands;
+pub mod command;
 pub mod crc8;
 
-mod command;
 mod configuration;
 mod error;
 mod rom;

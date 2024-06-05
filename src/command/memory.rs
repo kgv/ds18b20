@@ -1,9 +1,7 @@
-use super::{MatchRom, SkipRom};
 use crate::{
-    command::Commander,
     error::{Error, Result},
     scratchpad::Scratchpad,
-    Command, Driver, Pin, Rom,
+    Command, Driver, Pin,
 };
 use embedded_hal::delay::DelayNs;
 

@@ -1,5 +1,5 @@
 use crate::{
-    commands::{MatchRom, SkipRom},
+    command::{MatchRom, SkipRom},
     Rom,
 };
 
