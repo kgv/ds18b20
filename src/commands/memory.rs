@@ -1,9 +1,9 @@
-use super::{MatchRom, Pin, SkipRom};
+use super::{MatchRom, SkipRom};
 use crate::{
     command::Commander,
     error::{Error, Result},
     scratchpad::Scratchpad,
-    Command, Ds18b20Driver, Rom,
+    Command, Driver, Pin, Rom,
 };
 use embedded_hal::delay::DelayNs;
 
@@ -34,7 +34,7 @@ pub struct ConvertTemperature;
 impl Command for ConvertTemperature {
     type Output = Result<()>;
 
-    fn execute(&self, driver: &mut Ds18b20Driver<impl Pin, impl DelayNs>) -> Self::Output {
+    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         driver.write_byte(COMMAND_MEMORY_CONVERT)?;
         Ok(())
     }
@@ -56,7 +56,7 @@ pub struct RecallE2;
 impl Command for RecallE2 {
     type Output = Result<()>;
 
-    fn execute(&self, driver: &mut Ds18b20Driver<impl Pin, impl DelayNs>) -> Self::Output {
+    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         driver.write_byte(COMMAND_MEMORY_RECALL)?;
         // wait for the recall to finish (up to 10ms)
         let max_retries = (10000 / READ_SLOT_DURATION_MICROS) + 1;
@@ -77,7 +77,7 @@ pub struct CopyScratchpad;
 impl Command for CopyScratchpad {
     type Output = Result<()>;
 
-    fn execute(&self, driver: &mut Ds18b20Driver<impl Pin, impl DelayNs>) -> Self::Output {
+    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         driver.write_byte(COMMAND_MEMORY_SCRATCHPAD_COPY)?;
         driver.wait(10000); // delay 10ms for the write to complete
         Ok(())
@@ -91,7 +91,7 @@ pub struct ReadScratchpad;
 impl Command for ReadScratchpad {
     type Output = Result<Scratchpad>;
 
-    fn execute(&self, driver: &mut Ds18b20Driver<impl Pin, impl DelayNs>) -> Self::Output {
+    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         driver.write_byte(COMMAND_MEMORY_SCRATCHPAD_READ)?;
         let mut bytes = [0; 9];
         driver.read_bytes(&mut bytes)?;
@@ -109,7 +109,7 @@ pub struct WriteScratchpad {
 impl Command for WriteScratchpad {
     type Output = Result<()>;
 
-    fn execute(&self, driver: &mut Ds18b20Driver<impl Pin, impl DelayNs>) -> Self::Output {
+    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         driver.write_byte(COMMAND_MEMORY_SCRATCHPAD_WRITE)?;
         driver.write_byte(self.scratchpad.triggers.low as _)?;
         driver.write_byte(self.scratchpad.triggers.high as _)?;

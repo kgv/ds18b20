@@ -37,7 +37,7 @@ impl TryFrom<[u8; 9]> for Scratchpad {
     }
 }
 
-/// Config
+/// Ds18b20 configuration
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Configuration {
     pub resolution: Resolution,

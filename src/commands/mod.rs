@@ -9,8 +9,5 @@ pub use self::{
 use core::convert::Infallible;
 use embedded_hal::digital::{ErrorType, InputPin, OutputPin};
 
-/// Alias for `InputPin` + `OutputPin` + `ErrorType`.
-pub trait Pin = InputPin + OutputPin + ErrorType<Error = Infallible>;
-
 mod memory;
 mod rom;

@@ -1,5 +1,4 @@
-use super::Pin;
-use crate::{crc8::check, Command, Error, Ds18b20Driver, Result, Rom};
+use crate::{Command, Driver, Error, Pin, Result, Rom};
 use core::convert::Infallible;
 use embedded_hal::delay::DelayNs;
 
@@ -36,7 +35,7 @@ pub struct ReadRom;
 impl Command for ReadRom {
     type Output = Result<Rom>;
 
-    fn execute(&self, driver: &mut Ds18b20Driver<impl Pin, impl DelayNs>) -> Self::Output {
+    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         driver.write_byte(COMMAND_ROM_READ)?;
         let mut bytes = [0; 8];
         driver.read_bytes(&mut bytes)?;
@@ -60,7 +59,7 @@ pub struct MatchRom {
 impl Command for MatchRom {
     type Output = Result<(), Infallible>;
 
-    fn execute(&self, driver: &mut Ds18b20Driver<impl Pin, impl DelayNs>) -> Self::Output {
+    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         driver.write_byte(COMMAND_ROM_MATCH)?;
         let bytes: [u8; 8] = self.rom.into();
         driver.write_bytes(&bytes)?;
@@ -82,7 +81,7 @@ pub struct SkipRom;
 impl Command for SkipRom {
     type Output = Result<(), Infallible>;
 
-    fn execute(&self, driver: &mut Ds18b20Driver<impl Pin, impl DelayNs>) -> Self::Output {
+    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         driver.write_byte(COMMAND_ROM_SKIP)?;
         Ok(())
     }
@@ -102,7 +101,7 @@ pub struct SearchRom {
 impl Command for SearchRom {
     type Output = Result<Rom>;
 
-    fn execute(&self, driver: &mut Ds18b20Driver<impl Pin, impl DelayNs>) -> Self::Output {
+    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
         // All transactions on the 1-Wire bus begin with an initialization
         // sequence.
         if !driver.initialization()? {
@@ -148,7 +147,7 @@ impl Command for SearchRom {
 }
 
 impl SearchRom {
-    fn search(&mut self, one_wire: &mut Ds18b20Driver<impl Pin, impl DelayNs>) -> Result<Rom> {
+    fn search(&mut self, one_wire: &mut Driver<impl Pin, impl DelayNs>) -> Result<Rom> {
         // All transactions on the 1-Wire bus begin with an initialization
         // sequence.
         if !one_wire.initialization()? {
@@ -198,7 +197,7 @@ impl SearchRom {
 }
 
 pub struct Iter<'a, T, U> {
-    driver: &'a mut Ds18b20Driver<T, U>,
+    driver: &'a mut Driver<T, U>,
     discrepancies: u64,
     index: u8,
 }
