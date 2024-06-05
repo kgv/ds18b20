@@ -1,101 +1,60 @@
-# DS18B20 temperature sensor
-[![Build Status](https://travis-ci.org/fuchsnj/ds18b20.svg?branch=master)](https://travis-ci.org/fuchsnj/ds18b20)
-[![crates.io](https://img.shields.io/crates/v/ds18b20.svg)](https://crates.io/crates/ds18b20)
-[![API](https://docs.rs/ds18b20/badge.svg)](https://docs.rs/ds18b20)
+# One Wire
 
-A Rust [DS18B20](https://www.taydaelectronics.com/datasheets/A-072.pdf) temperature sensor driver for [embedded-hal](https://github.com/rust-embedded/embedded-hal) 
+A Rust implementation of the 1-Wire master communication protocol. The basic
+operations of a 1-Wire bus are: `Reset`, `Write` bit (`1` or `0`) and `Read`
+bit. It also implements functions derived from multiple calls to the bit
+operations. The time values provided produce the most robust 1-Wire master for
+communication with all 1-Wire devices over various line conditions.
 
-This device uses the 1-wire protocol, and requires using the [one-wire-bus](https://crates.io/crates/one-wire-bus)
-library for the 1-wire bus.
+## See also
 
-## Quick Start
+- [1-Wire](https://www.analog.com/en/technical-articles/1wire-communication-through-software.html)
+- [embedded-hal](https://github.com/rust-embedded/embedded-hal)
 
-### Get Temperature
+<!-- ## Quick Start
+
+These examples omit error handling to keep them short. You should check all
+results and handle them appropriately.
+
+The 1-wire bus requires a single digital pin that is configured as an
+open-drain output (it's either open, or connected to ground), and the bus
+should have a ~5K Ohm pull-up resistor connected. How you obtain this pin from your
+specific device is up the the embedded-hal implementation for that device, but it must
+implement both `InputPin` and `OutputPin` 
+
 ```rust
-fn get_temperature<P, E>(
-    delay: &mut (impl DelayUs<u16> + DelayMs<u16>),
+use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::digital::v2::{InputPin, OutputPin};
+use core::fmt::{Debug, Write};
+use one_wire_bus::OneWire;
+
+fn find_devices<P, E>(
+    delay: &mut impl DelayUs<u16>,
     tx: &mut impl Write,
-    one_wire_bus: &mut OneWire<P>,
-) -> OneWireResult<(), E>
+    one_wire_pin: P,
+)
     where
         P: OutputPin<Error=E> + InputPin<Error=E>,
         E: Debug
 {
-    // initiate a temperature measurement for all connected devices
-    ds18b20::start_simultaneous_temp_measurement(one_wire_bus, delay)?;
+    let mut one_wire_bus = OneWire::new(one_wire_pin).unwrap();
+    for device_address in one_wire_bus.devices(false, delay) {
+        // The search could fail at any time, so check each result. The iterator automatically
+        // ends after an error.
+        let device_address = device_address.unwrap();
 
-    // wait until the measurement is done. This depends on the resolution you specified
-    // If you don't know the resolution, you can obtain it from reading the sensor data,
-    // or just wait the longest time, which is the 12-bit resolution (750ms)
-    Resolution::Bits12.delay_for_measurement_time(delay);
-
-    // iterate over all the devices, and report their temperature
-    let mut search_state = None;
-    loop {
-        if let Some((device_address, state)) = one_wire_bus.device_search(search_state.as_ref(), false, delay)? {
-            search_state = Some(state);
-            if device_address.family_code() != ds18b20::FAMILY_CODE {
-                // skip other devices
-                continue;
-            }
-            // You will generally create the sensor once, and save it for later
-            let sensor = Ds18b20::new(device_address)?;
-
-            // contains the read temperature, as well as config info such as the resolution used
-            let sensor_data = sensor.read_data(one_wire_bus, delay)?;
-            writeln!(tx, "Device at {:?} is {}°C", device_address, sensor_data.temperature);
-        } else {
-            break;
-        }
+        // The family code can be used to identify the type of device
+        // If supported, another crate can be used to interact with that device at the given address
+        writeln!(tx, "Found device at address {:?} with family code: {:#x?}",
+                 device_address, device_address.family_code()).unwrap();
     }
-    Ok(())
 }
 ```
 
-### Configuration
-```rust
-fn test_config<P, E>(
-    delay: &mut (impl DelayUs<u16> + DelayMs<u16>),
-    tx: &mut impl Write,
-    one_wire_bus: &mut OneWire<P>,
-) -> OneWireResult<(), E>
-    where
-        P: OutputPin<Error=E> + InputPin<Error=E>,
-        E: Debug
-{
-
-    // Find the first device on the bus (assuming they are all Ds18b20's)
-    if let Some(device_address) = one_wire_bus.devices(false, delay).next() {
-        let device_address = device_address?;
-        let device = Ds18b20::new(device_address)?;
-
-        // read the initial config values (read from EEPROM by the device when it was first powered)
-        let initial_data = device.read_data(one_wire_bus, delay)?;
-        writeln!(tx, "Initial data: {:?}", initial_data);
-
-        let resolution = initial_data.resolution;
-
-        // set new alarm values, but keep the resolution the same
-        device.set_config(18, 24, resolution, one_wire_bus, delay)?;
-
-        // confirm the new config is now in the scratchpad memory
-        let new_data = device.read_data(one_wire_bus, delay)?;
-        writeln!(tx, "New data: {:?}", new_data);
-
-        // save the config to EEPROM to save it permanently
-        device.save_to_eeprom(one_wire_bus, delay)?;
-
-        // read the values from EEPROM back to the scratchpad to verify it was saved correctly
-        device.recall_from_eeprom(one_wire_bus, delay)?;
-        let eeprom_data = device.read_data(one_wire_bus, delay)?;
-        writeln!(tx, "EEPROM data: {:?}", eeprom_data);
-    }
-    Ok(())
-}
+Example Output
 ```
-Example output
-```
-Initial data: SensorData { temperature: 85.0, resolution: Bits12, alarm_temp_low: 70, alarm_temp_high: 75 }
-New data: SensorData { temperature: 85.0, resolution: Bits12, alarm_temp_low: 18, alarm_temp_high: 24 }
-EEPROM data: SensorData { temperature: 85.0, resolution: Bits12, alarm_temp_low: 18, alarm_temp_high: 24 }
-```
+Found device at address E800000B1FCD1028 with family code: 0x28
+Found device at address 70000008AC851628 with family code: 0x28
+Found device at address 0B00000B20687E28 with family code: 0x28
+Found device at address 5700000B2015FF28 with family code: 0x28
+``` -->

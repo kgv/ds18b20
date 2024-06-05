@@ -1,6 +1,7 @@
 use core::convert::Infallible;
 use thiserror::Error;
 
+/// Result
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
 /// Error
@@ -12,10 +13,12 @@ pub enum Error {
     NotHigh,
     #[error("pin")]
     Pin(#[from] Infallible),
-    #[error("an unexpected response was received from a command")]
-    OneWire(#[from] one_wire::Error),
     #[error("family code mismatch")]
     MismatchedFamilyCode,
+    #[error("there are no devices attached to the 1-Wire bus")]
+    NoAttachedDevices,
+    #[error("CRC mismatch {{ crc8={crc8} }}")]
+    MismatchedCrc { crc8: u8 },
     #[error("timeout expired")]
     Timeout,
 }

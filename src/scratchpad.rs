@@ -1,5 +1,7 @@
-use crate::error::{Error, Result};
-use one_wire::crc8::check;
+use crate::{
+    crc8::check,
+    error::{Error, Result},
+};
 
 const CONVERSION_TIME: f32 = 750.0;
 
@@ -115,8 +117,6 @@ fn temperature(lsb: u8, msb: u8, resolution: Resolution) -> f32 {
 
 #[test]
 fn test() {
-    use core::default::default;
-
     // Configuration register
     assert_eq!(
         Err(Error::ConfigurationRegister),
@@ -143,14 +143,14 @@ fn test() {
         Configuration::try_from(0b1_11_11111),
     );
     // Temperature
-    assert_eq!(125.0, temperature(0x07, 0xD0, default()));
-    assert_eq!(85.0, temperature(0x05, 0x50, default()));
-    assert_eq!(25.0625, temperature(0x01, 0x91, default()));
-    assert_eq!(10.125, temperature(0x00, 0xA2, default()));
-    assert_eq!(0.5, temperature(0x00, 0x08, default()));
-    assert_eq!(0.0, temperature(0x00, 0x00, default()));
-    assert_eq!(-0.5, temperature(0xFF, 0xF8, default()));
-    assert_eq!(-10.125, temperature(0xFF, 0x5E, default()));
-    assert_eq!(-25.0625, temperature(0xFE, 0x6F, default()));
-    assert_eq!(-55.0, temperature(0xFC, 0x90, default()));
+    assert_eq!(125.0, temperature(0x07, 0xD0, Default::default()));
+    assert_eq!(85.0, temperature(0x05, 0x50, Default::default()));
+    assert_eq!(25.0625, temperature(0x01, 0x91, Default::default()));
+    assert_eq!(10.125, temperature(0x00, 0xA2, Default::default()));
+    assert_eq!(0.5, temperature(0x00, 0x08, Default::default()));
+    assert_eq!(0.0, temperature(0x00, 0x00, Default::default()));
+    assert_eq!(-0.5, temperature(0xFF, 0xF8, Default::default()));
+    assert_eq!(-10.125, temperature(0xFF, 0x5E, Default::default()));
+    assert_eq!(-25.0625, temperature(0xFE, 0x6F, Default::default()));
+    assert_eq!(-55.0, temperature(0xFC, 0x90, Default::default()));
 }
