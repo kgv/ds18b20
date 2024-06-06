@@ -4,7 +4,7 @@ description = "A Rust implementation of the 1-Wire protocol"
 edition = "2021"
 keywords = ["1wire", "ds18b20", "embedded", "embedded-hal-driver", "onewire"]
 name = "ds18b20"
-readme = "README.md"
+readme = "README.adoc"
 version = "0.0.4"
 
 [dependencies]

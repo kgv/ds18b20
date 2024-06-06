@@ -11,6 +11,7 @@ pub fn calculate(data: &[u8]) -> u8 {
             let bit = crc & 0x01;
             crc >>= 1;
             if bit != 0 {
+                // 0b1000_1100
                 crc ^= 0x8C;
             }
         }
@@ -26,7 +27,10 @@ pub fn calculate(data: &[u8]) -> u8 {
 pub fn check(data: &[u8]) -> Result<(), Ds18b20Error> {
     match calculate(data) {
         0 => Ok(()),
-        crc8 => Err(Ds18b20Error::Crc { crc8 }),
+        crc => Err(Ds18b20Error::UnexpectedCrc {
+            crc,
+            expected: data[data.len() - 1],
+        }),
     }
 }
 

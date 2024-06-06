@@ -1,7 +1,4 @@
-use crate::{
-    command::{MatchRom, SkipRom},
-    Rom,
-};
+use crate::Rom;
 
 /// Load config from EEPROM to scratchpad.
 ///

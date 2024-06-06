@@ -1,9 +1,12 @@
 use crate::{
-    error::{Error, Result},
+    error::{Ds18b20Error, Error},
     scratchpad::Scratchpad,
-    Command, Driver,
+    Driver,
 };
-use embedded_hal::delay::DelayNs;
+use embedded_hal::{
+    delay::DelayNs,
+    digital::{ErrorType, InputPin, OutputPin},
+};
 
 pub const COMMAND_MEMORY_CONVERT: u8 = 0x44;
 pub const COMMAND_MEMORY_RECALL: u8 = 0xB8;
@@ -14,111 +17,80 @@ pub const COMMAND_MEMORY_SCRATCHPAD_WRITE: u8 = 0x4E;
 
 const READ_SLOT_DURATION_MICROS: u16 = 70;
 
-/// This command begins a temperature conversion. No further data is required.
-/// The temperature conversion will be performed and then the DS18B20 will
-/// remain idle. If the bus master issues read time slots following this
-/// command, the DS18B20 will output 0 on the bus as long as it is busy making a
-/// temperature conversion; it will return a 1 when the temperature conversion
-/// is complete. If parasite-powered, the bus master has to enable a strong
-/// pullup for a period greater than tconv immediately after issuing this
-/// command.
-///
-/// You should wait for the measurement to finish before reading the
-/// measurement. The amount of time you need to wait depends on the current
-/// resolution configuration
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ConvertTemperature;
+/// Memory commands
+pub trait MemoryCommands<T: ErrorType> {
+    fn convert_temperature(&mut self) -> Result<(), Error<T::Error>>;
+    fn read_power_supply(&self) -> Result<(), Error<T::Error>>;
+    fn recall_eeprom(&mut self) -> Result<(), Error<T::Error>>;
+    fn copy_scratchpad(&mut self) -> Result<(), Error<T::Error>>;
+    fn read_scratchpad(&mut self) -> Result<Scratchpad, Error<T::Error>>;
+    fn write_scratchpad(&mut self, scratchpad: Scratchpad) -> Result<(), Error<T::Error>>;
+}
 
-impl Command for ConvertTemperature {
-    type Output = Result<()>;
-
-    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
-        driver.write_byte(COMMAND_MEMORY_CONVERT)?;
+impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> MemoryCommands<T> for Driver<T, U> {
+    /// This command begins a temperature conversion. No further data is required.
+    /// The temperature conversion will be performed and then the DS18B20 will
+    /// remain idle. If the bus master issues read time slots following this
+    /// command, the DS18B20 will output 0 on the bus as long as it is busy making a
+    /// temperature conversion; it will return a 1 when the temperature conversion
+    /// is complete. If parasite-powered, the bus master has to enable a strong
+    /// pullup for a period greater than tconv immediately after issuing this
+    /// command.
+    ///
+    /// You should wait for the measurement to finish before reading the
+    /// measurement. The amount of time you need to wait depends on the current
+    /// resolution configuration
+    fn convert_temperature(&mut self) -> Result<(), Error<T::Error>> {
+        self.write_byte(COMMAND_MEMORY_CONVERT)?;
         Ok(())
     }
-}
 
-/// Signals the mode of DS18B20 power supply to the master.
-#[derive(Clone, Copy, Debug)]
-pub enum ReadPowerSupply {
     /// Signals the mode of DS18B20 power supply to the master.
-    Read,
-}
+    fn read_power_supply(&self) -> Result<(), Error<T::Error>> {
+        Ok(())
+    }
 
-/// Recalls values stored in nonvolatile memory (EEPROM, electrically erasable
-/// programmable read-only memory) into scratchpad (temperature triggers). Load
-/// config from EEPROM to scratchpad.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct RecallE2;
-
-impl Command for RecallE2 {
-    type Output = Result<()>;
-
-    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
-        driver.write_byte(COMMAND_MEMORY_RECALL)?;
+    /// Recalls values stored in nonvolatile memory (EEPROM, electrically erasable
+    /// programmable read-only memory) into scratchpad (temperature triggers). Load
+    /// config from EEPROM to scratchpad.
+    fn recall_eeprom(&mut self) -> Result<(), Error<T::Error>> {
+        self.write_byte(COMMAND_MEMORY_RECALL)?;
         // wait for the recall to finish (up to 10ms)
         let max_retries = (10000 / READ_SLOT_DURATION_MICROS) + 1;
         for _ in 0..max_retries {
-            if driver.read_bit()? == true {
+            if self.read_bit()? == true {
                 return Ok(());
             }
         }
-        Err(Error::Timeout)
+        Err(Ds18b20Error::Timeout)?
     }
-}
 
-/// Copies scratchpad into nonvolatile memory (EEPROM) (addresses 2 through 4
-/// only). Save config from scratchpad to EEPROM.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct CopyScratchpad;
-
-impl Command for CopyScratchpad {
-    type Output = Result<()>;
-
-    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
-        driver.write_byte(COMMAND_MEMORY_SCRATCHPAD_COPY)?;
-        driver.wait(10000); // delay 10ms for the write to complete
+    /// Copies scratchpad into nonvolatile memory (EEPROM) (addresses 2 through 4
+    /// only). Save config from scratchpad to EEPROM.
+    fn copy_scratchpad(&mut self) -> Result<(), Error<T::Error>> {
+        self.write_byte(COMMAND_MEMORY_SCRATCHPAD_COPY)?;
+        self.delay(10000); // delay 10ms for the write to complete
         Ok(())
     }
-}
 
-/// Reads bytes from scratchpad and reads CRC byte.
-#[derive(Clone, Copy, Debug)]
-pub struct ReadScratchpad;
-
-impl Command for ReadScratchpad {
-    type Output = Result<Scratchpad>;
-
-    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
-        driver.write_byte(COMMAND_MEMORY_SCRATCHPAD_READ)?;
+    /// Reads bytes from scratchpad and reads CRC byte.
+    fn read_scratchpad(&mut self) -> Result<Scratchpad, Error<T::Error>> {
+        self.write_byte(COMMAND_MEMORY_SCRATCHPAD_READ)?;
         let mut bytes = [0; 9];
-        driver.read_bytes(&mut bytes)?;
-        bytes.try_into()
+        self.read_bytes(&mut bytes)?;
+        Ok(bytes.try_into()?)
     }
-}
 
-/// Writes bytes into scratchpad at addresses 2 through 4 (TH and TL
-/// temperature triggers and config).
-#[derive(Clone, Copy, Debug, Default)]
-pub struct WriteScratchpad {
-    pub scratchpad: Scratchpad,
-}
-
-impl Command for WriteScratchpad {
-    type Output = Result<()>;
-
-    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
-        driver.write_byte(COMMAND_MEMORY_SCRATCHPAD_WRITE)?;
-        driver.write_byte(self.scratchpad.triggers.low as _)?;
-        driver.write_byte(self.scratchpad.triggers.high as _)?;
-        driver.write_byte(self.scratchpad.configuration.resolution as _)?;
+    /// Writes bytes into scratchpad at addresses 2 through 4 (TH and TL
+    /// temperature triggers and config).
+    fn write_scratchpad(&mut self, scratchpad: Scratchpad) -> Result<(), Error<T::Error>> {
+        self.write_byte(COMMAND_MEMORY_SCRATCHPAD_WRITE)?;
+        self.write_byte(scratchpad.triggers.low as _)?;
+        self.write_byte(scratchpad.triggers.high as _)?;
+        self.write_byte(scratchpad.configuration_register.resolution as _)?;
         Ok(())
     }
 }
-
-/// And command
-#[derive(Clone, Copy, Debug, Default)]
-pub struct And<T, U>(pub T, pub U);
 
 // impl<T: Command<Output = V>, U: Command<Output = V>, V> Command for And<T, U> {
 //     type Output = Result<()>;

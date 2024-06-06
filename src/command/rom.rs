@@ -1,5 +1,8 @@
-use crate::{Command, Driver, Error, Rom};
-use embedded_hal::delay::DelayNs;
+use crate::{error::Ds18b20Error, Driver, Error, Rom};
+use embedded_hal::{
+    delay::DelayNs,
+    digital::{ErrorType, InputPin, OutputPin},
+};
 
 pub const COMMAND_ALARM_SEARCH: u8 = 0xEC;
 pub const COMMAND_ROM_READ: u8 = 0x33;
@@ -12,202 +15,133 @@ const ZERO: (bool, bool) = (false, true);
 const ONE: (bool, bool) = (true, false);
 const NONE: (bool, bool) = (true, true);
 
-/// Search alarm command
-///
-/// When a system is initially brought up, the bus master might not know the
-/// number of devices on the 1-Wire bus or their 64-bit ROM codes. The search
-/// ROM command allows the bus master to use a process of elimination to
-/// identify the 64-bit ROM codes of all slave devices on the bus.
-#[derive(Clone, Copy, Debug)]
-pub struct SearchAlarm;
+/// Rom commands
+pub trait RomCommands<T: ErrorType> {
+    fn read_rom(&mut self) -> Result<Rom, Error<T::Error>>;
+    fn match_rom(&mut self, rom: Rom) -> Result<(), Error<T::Error>>;
+    fn skip_rom(&mut self) -> Result<(), Error<T::Error>>;
+    fn search_rom(&mut self) -> Result<Rom, Error<T::Error>>;
+    fn search_alarm(&self) -> Result<(), Error<T::Error>>;
+}
 
-/// Read ROM command
-///
-/// This command allows the bus master to read the DS18B20’s 8-bit family code,
-/// unique 48-bit serial number, and 8-bit CRC. This command can only be used if
-/// there is a single DS18B20 on the bus. If more than one slave is present on
-/// the bus, a data collision will occur when all slaves try to transmit at the
-/// same time (open drain will produce a wired AND result).
-#[derive(Clone, Copy, Debug)]
-pub struct ReadRom;
-
-impl Command for ReadRom {
-    type Output = Result<Rom>;
-
-    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
-        driver.write_byte(COMMAND_ROM_READ)?;
+impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> RomCommands<T> for Driver<T, U> {
+    /// Read ROM command
+    ///
+    /// This command allows the bus master to read the DS18B20’s 8-bit family code,
+    /// unique 48-bit serial number, and 8-bit CRC. This command can only be used if
+    /// there is a single DS18B20 on the bus. If more than one slave is present on
+    /// the bus, a data collision will occur when all slaves try to transmit at the
+    /// same time (open drain will produce a wired AND result).
+    fn read_rom(&mut self) -> Result<Rom, Error<T::Error>> {
+        self.write_byte(COMMAND_ROM_READ)?;
         let mut bytes = [0; 8];
-        driver.read_bytes(&mut bytes)?;
-        bytes.try_into()
+        self.read_bytes(&mut bytes)?;
+        Ok(bytes.try_into()?)
     }
-}
 
-/// Match ROM command
-///
-/// The match ROM command, followed by a 64-bit ROM sequence, allows the bus
-/// master to address a specific DS18B20 on a multidrop bus. Only the DS18B20
-/// that exactly matches the 64-bit ROM sequence will respond to the following
-/// memory function command. All slaves that do not match the 64-bit ROM
-/// sequence will wait for a reset pulse. This command can be used with a single
-/// or multiple devices on the bus.
-#[derive(Clone, Copy, Debug)]
-pub struct MatchRom {
-    pub rom: Rom,
-}
-
-impl Command for MatchRom {
-    type Output = Result<()>;
-
-    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
-        driver.write_byte(COMMAND_ROM_MATCH)?;
-        let bytes: [u8; 8] = self.rom.into();
-        driver.write_bytes(&bytes)?;
+    /// Match ROM command
+    ///
+    /// The match ROM command, followed by a 64-bit ROM sequence, allows the bus
+    /// master to address a specific DS18B20 on a multidrop bus. Only the DS18B20
+    /// that exactly matches the 64-bit ROM sequence will respond to the following
+    /// memory function command. All slaves that do not match the 64-bit ROM
+    /// sequence will wait for a reset pulse. This command can be used with a single
+    /// or multiple devices on the bus.
+    fn match_rom(&mut self, rom: Rom) -> Result<(), Error<T::Error>> {
+        self.write_byte(COMMAND_ROM_MATCH)?;
+        let bytes: [u8; 8] = rom.into();
+        self.write_bytes(&bytes)?;
         Ok(())
     }
-}
 
-/// Skip ROM command
-///
-/// This command can save time in a single drop bus system by allowing the bus
-/// master to access the memory functions without providing the 64-bit ROM code.
-/// If more than one slave is present on the bus and a Read command is issued
-/// following the Skip ROM command, data collision will occur on the bus as
-/// multiple slaves transmit simultaneously (open drain pulldowns will produce a
-/// wired AND result).
-#[derive(Clone, Copy, Debug, Default)]
-pub struct SkipRom;
-
-impl Command for SkipRom {
-    type Output = Result<()>;
-
-    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
-        driver.write_byte(COMMAND_ROM_SKIP)?;
+    /// Skip ROM command
+    ///
+    /// This command can save time in a single drop bus system by allowing the bus
+    /// master to access the memory functions without providing the 64-bit ROM code.
+    /// If more than one slave is present on the bus and a Read command is issued
+    /// following the Skip ROM command, data collision will occur on the bus as
+    /// multiple slaves transmit simultaneously (open drain pulldowns will produce a
+    /// wired AND result).
+    fn skip_rom(&mut self) -> Result<(), Error<T::Error>> {
+        self.write_byte(COMMAND_ROM_SKIP)?;
         Ok(())
     }
-}
 
-/// Search ROM command
-///
-/// When a system is initially brought up, the bus master might not know the
-/// number of devices on the 1-Wire bus or their 64-bit ROM codes. The search
-/// ROM command allows the bus master to use a process of elimination to
-/// identify the 64-bit ROM codes of all slave devices on the bus.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct SearchRom {
-    conflicts: u64,
-}
-
-impl Command for SearchRom {
-    type Output = Result<Rom>;
-
-    fn execute(&self, driver: &mut Driver<impl Pin, impl DelayNs>) -> Self::Output {
+    /// Search ROM command
+    ///
+    /// When a system is initially brought up, the bus master might not know the
+    /// number of devices on the 1-Wire bus or their 64-bit ROM codes. The search
+    /// ROM command allows the bus master to use a process of elimination to
+    /// identify the 64-bit ROM codes of all slave devices on the bus.
+    fn search_rom(&mut self) -> Result<Rom, Error<T::Error>> {
         // All transactions on the 1-Wire bus begin with an initialization
         // sequence.
-        if !driver.initialization()? {
-            return Err(Error::NoAttachedDevices);
+        if !self.initialization()? {
+            Err(Ds18b20Error::NoAttachedDevices)?;
         }
-        driver.write_byte(COMMAND_ROM_SEARCH)?;
+        self.write_byte(COMMAND_ROM_SEARCH)?;
         let mut rom = 0;
+        let mut conflicts = 0;
         for index in 0..u64::BITS {
             let mask = 1u64 << index;
-            match (driver.read_bit()?, driver.read_bit()?) {
+            match (self.read_bit()?, self.read_bit()?) {
                 // `0b00`: There are still devices attached which have
                 // conflicting bits in this position.
                 CONFLICT => {
                     // TODO:
                     // discrepancies |= mask;
                     // state.index = index;
-                    if self.conflicts & mask == 0 {
+                    if conflicts & mask == 0 {
                         rom &= !mask;
-                        driver.write_bit(false)?;
+                        self.write_bit(false)?;
                     } else {
                         rom |= mask;
-                        driver.write_bit(true)?;
+                        self.write_bit(true)?;
                     }
                 }
                 // `0b01`: All devices still coupled have a 0-bit in this bit
                 // position.
                 ZERO => {
                     rom |= mask;
-                    driver.write_bit(false)?;
+                    self.write_bit(false)?;
                 }
                 // `0b10`: All devices still coupled have a 1-bit in this bit
                 // position.
                 ONE => {
                     rom &= !mask;
-                    driver.write_bit(true)?;
+                    self.write_bit(true)?;
                 }
                 // `0b11`: There are no devices attached to the 1-Wire bus.
-                NONE => return Err(Error::NoAttachedDevices),
+                NONE => Err(Ds18b20Error::NoAttachedDevices)?,
             }
         }
-        rom.try_into()
+        Ok(rom.try_into()?)
+    }
+
+    /// Search alarm command
+    ///
+    /// When a system is initially brought up, the bus master might not know the
+    /// number of devices on the 1-Wire bus or their 64-bit ROM codes. The search
+    /// ROM command allows the bus master to use a process of elimination to
+    /// identify the 64-bit ROM codes of all slave devices on the bus.
+    fn search_alarm(&self) -> Result<(), Error<T::Error>> {
+        unimplemented!()
     }
 }
 
-impl SearchRom {
-    fn search(&mut self, one_wire: &mut Driver<impl Pin, impl DelayNs>) -> Result<Rom> {
-        // All transactions on the 1-Wire bus begin with an initialization
-        // sequence.
-        if !one_wire.initialization()? {
-            return Err(Error::NoAttachedDevices);
-        }
-        one_wire.write_byte(COMMAND_ROM_SEARCH)?;
-        let mut code = 0;
-        for index in 0..u64::BITS {
-            let mask = 1u64 << index;
-            match (one_wire.read_bit()?, one_wire.read_bit()?) {
-                // `0b00`: There are still devices attached which have
-                // conflicting bits in this position.
-                CONFLICT => {
-                    // TODO:
-                    // discrepancies |= mask;
-                    // state.index = index;
-                    // self.conflicts ^= mask;
-                    self.conflicts ^= mask;
-                    if self.conflicts ^ mask == 0 {
-                        self.conflicts |= mask;
-                        code &= !mask;
-                        one_wire.write_bit(false)?;
-                    } else {
-                        self.conflicts &= !mask;
-                        code |= mask;
-                        one_wire.write_bit(true)?
-                    }
-                }
-                // `0b01`: All devices still coupled have a 0-bit in this bit
-                // position.
-                ZERO => {
-                    code |= mask;
-                    one_wire.write_bit(false)?;
-                }
-                // `0b10`: All devices still coupled have a 1-bit in this bit
-                // position.
-                ONE => {
-                    code &= !mask;
-                    one_wire.write_bit(true)?;
-                }
-                // `0b11`: There are no devices attached to the 1-Wire bus.
-                NONE => return Err(Error::NoAttachedDevices),
-            }
-        }
-        code.try_into()
-    }
-}
+// pub struct Iter<'a, T, U> {
+//     driver: &'a mut Driver<T, U>,
+//     discrepancies: u64,
+//     index: u8,
+// }
 
-pub struct Iter<'a, T, U> {
-    driver: &'a mut Driver<T, U>,
-    discrepancies: u64,
-    index: u8,
-}
+// impl<T, U> Iterator for Iter<'_, T, U> {
+//     type Item = Result<Rom>;
 
-impl<T, U> Iterator for Iter<'_, T, U> {
-    type Item = Result<Rom>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
+//     fn next(&mut self) -> Option<Self::Item> {
+//         None
+//     }
+// }
 
 // /// Search for device addresses on the bus
 // ///
