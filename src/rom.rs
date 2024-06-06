@@ -1,4 +1,4 @@
-use crate::crc8::{check, Error, Result};
+use crate::{crc8::check, error::Ds18b20Error};
 use core::fmt::Debug;
 
 /// Lasered ROM
@@ -10,9 +10,9 @@ pub struct Rom {
 }
 
 impl TryFrom<[u8; 8]> for Rom {
-    type Error = Error;
+    type Error = Ds18b20Error;
 
-    fn try_from(value: [u8; 8]) -> Result<Self> {
+    fn try_from(value: [u8; 8]) -> Result<Self, Self::Error> {
         check(&value)?;
         Ok(Self {
             family_code: value[0],
@@ -23,9 +23,9 @@ impl TryFrom<[u8; 8]> for Rom {
 }
 
 impl TryFrom<u64> for Rom {
-    type Error = Error;
+    type Error = Ds18b20Error;
 
-    fn try_from(value: u64) -> Result<Self> {
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
         value.to_le_bytes().try_into()
     }
 }

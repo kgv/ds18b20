@@ -1,4 +1,4 @@
-use crate::{Command, Driver, Error, Pin, Result, Rom};
+use crate::{Command, Driver, Error, Rom};
 use embedded_hal::delay::DelayNs;
 
 pub const COMMAND_ALARM_SEARCH: u8 = 0xEC;

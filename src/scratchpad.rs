@@ -1,7 +1,4 @@
-use crate::{
-    crc8::check,
-    error::{Error, Result},
-};
+use crate::{crc8::check, error::Ds18b20Error};
 
 const CONVERSION_TIME: f32 = 750.0;
 
@@ -20,9 +17,9 @@ pub struct Scratchpad {
 }
 
 impl TryFrom<[u8; 9]> for Scratchpad {
-    type Error = Error;
+    type Error = Ds18b20Error;
 
-    fn try_from(value: [u8; 9]) -> Result<Self> {
+    fn try_from(value: [u8; 9]) -> Result<Self, Self::Error> {
         check(&value)?;
         let configuration = Configuration::try_from(value[4])?;
         Ok(Scratchpad {
@@ -56,9 +53,9 @@ impl Configuration {
 }
 
 impl TryFrom<u8> for Configuration {
-    type Error = Error;
+    type Error = Ds18b20Error;
 
-    fn try_from(value: u8) -> Result<Self> {
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             NINE => Ok(Self {
                 resolution: Resolution::Nine,
@@ -72,7 +69,7 @@ impl TryFrom<u8> for Configuration {
             TWELVE => Ok(Self {
                 resolution: Resolution::Twelve,
             }),
-            _ => Err(Error::ConfigurationRegister),
+            _ => Err(Ds18b20Error::ConfigurationRegister),
         }
     }
 }
@@ -119,27 +116,27 @@ fn temperature(lsb: u8, msb: u8, resolution: Resolution) -> f32 {
 fn test() {
     // Configuration register
     assert_eq!(
-        Err(Error::ConfigurationRegister),
+        Err(Ds18b20Error::ConfigurationRegister),
         Configuration::try_from(0b0_11_11110),
     );
     assert_eq!(
-        Err(Error::ConfigurationRegister),
+        Err(Ds18b20Error::ConfigurationRegister),
         Configuration::try_from(0b0_11_11101),
     );
     assert_eq!(
-        Err(Error::ConfigurationRegister),
+        Err(Ds18b20Error::ConfigurationRegister),
         Configuration::try_from(0b0_11_11011),
     );
     assert_eq!(
-        Err(Error::ConfigurationRegister),
+        Err(Ds18b20Error::ConfigurationRegister),
         Configuration::try_from(0b0_11_10111),
     );
     assert_eq!(
-        Err(Error::ConfigurationRegister),
+        Err(Ds18b20Error::ConfigurationRegister),
         Configuration::try_from(0b0_11_01111),
     );
     assert_eq!(
-        Err(Error::ConfigurationRegister),
+        Err(Ds18b20Error::ConfigurationRegister),
         Configuration::try_from(0b1_11_11111),
     );
     // Temperature

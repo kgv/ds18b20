@@ -6,23 +6,19 @@
 #![feature(error_in_core)]
 #![feature(trait_alias)]
 
-pub use self::{
-    command::Command,
-    error::{Error, Result},
-    rom::Rom,
-    scratchpad::Configuration,
-};
+pub use self::{command::Command, error::Error, rom::Rom, scratchpad::Configuration};
 
 use embedded_hal::{
     delay::DelayNs,
     digital::{ErrorType, InputPin, OutputPin},
 };
+use error::Ds18b20Error;
 use standard::*;
 
 pub const FAMILY_CODE: u8 = 0x28;
 
-/// Alias for `InputPin` + `OutputPin` + `ErrorType`.
-pub trait Pin = InputPin + OutputPin + ErrorType<Error = Error>;
+// /// Alias for `InputPin` + `OutputPin` + `ErrorType`.
+// pub trait Pin = InputPin + OutputPin + ErrorType<Error = Error>;
 
 /// Ds18b20
 pub struct Ds18b20 {
@@ -32,7 +28,7 @@ pub struct Ds18b20 {
 impl Ds18b20 {
     /// Checks that the given code contains the correct family code, reads
     /// configuration data, then returns a device
-    pub fn new(rom: Rom) -> Result<Ds18b20> {
+    pub fn new(rom: Rom) -> Result<Ds18b20, Ds18b20Error> {
         match rom.family_code {
             FAMILY_CODE => Ok(Self { rom }),
             _ => Err(Error::MismatchedFamilyCode),
@@ -53,44 +49,38 @@ pub struct Driver<T, U> {
     speed: Speed,
 }
 
-impl<T: Pin, U: DelayNs> Driver<T, U> {
-    pub fn run<C: Command>(&mut self, command: C) -> C::Output {
-        command.execute(self)
-    }
-}
-
 impl<T: InputPin + ErrorType, U> Driver<T, U> {
-    pub fn is_high(&mut self) -> Result<bool, T::Error> {
-        Ok(self.pin.is_high()?)
+    pub fn is_high(&mut self) -> Result<bool, Error<T::Error>> {
+        self.pin.is_high().map_err(Error::Pin)
     }
 
-    pub fn is_low(&mut self) -> Result<bool, T::Error> {
-        Ok(self.pin.is_low()?)
+    pub fn is_low(&mut self) -> Result<bool, Error<T::Error>> {
+        self.pin.is_low().map_err(Error::Pin)
     }
 }
 
 impl<T: OutputPin + ErrorType, U> Driver<T, U> {
-    pub fn new(pin: T, delay: U) -> Result<Self, T::Error> {
-        let mut one_wire = Self {
+    pub fn new(pin: T, delay: U) -> Result<Self, Error<T::Error>> {
+        let mut driver = Self {
             pin,
             delay,
             speed: Speed::Standard,
         };
         // Pin should be high during idle.
-        one_wire.set_high()?;
-        Ok(one_wire)
+        driver.set_high()?;
+        Ok(driver)
     }
 
     /// Set the output as high.
     ///
     /// Disconnects the bus, letting another device (or the pull-up resistor)
-    pub fn set_high(&mut self) -> Result<(), T::Error> {
-        Ok(self.pin.set_high()?)
+    pub fn set_high(&mut self) -> Result<(), Error<T::Error>> {
+        self.pin.set_high().map_err(Error::Pin)
     }
 
     /// Set the output as low.
-    pub fn set_low(&mut self) -> Result<(), T::Error> {
-        Ok(self.pin.set_low()?)
+    pub fn set_low(&mut self) -> Result<(), Error<T::Error>> {
+        self.pin.set_low().map_err(Error::Pin)
     }
 }
 
@@ -109,7 +99,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
     /// transmitted by the bus master followed by presence pulse(s) transmitted
     /// by the slave(s). The presence pulse lets the bus master know that the
     /// DS18B20 is on the bus and is ready to operate.
-    pub fn initialization(&mut self) -> Result<bool, T::Error> {
+    pub fn initialization(&mut self) -> Result<bool, Error<T::Error>> {
         self.set_low()?;
         self.wait(H);
         self.set_high()?;
@@ -121,7 +111,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
 
     /// Read a bit from the 1-Wire bus and return it. Provide 10us recovery
     /// time.
-    pub fn read_bit(&mut self) -> Result<bool, T::Error> {
+    pub fn read_bit(&mut self) -> Result<bool, Error<T::Error>> {
         self.set_low()?;
         self.wait(A);
         self.set_high()?;
@@ -132,7 +122,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
     }
 
     /// Send a 1-Wire write bit. Provide 10us recovery time.
-    pub fn write_bit(&mut self, bit: bool) -> Result<(), T::Error> {
+    pub fn write_bit(&mut self, bit: bool) -> Result<(), Error<T::Error>> {
         self.set_low()?;
         self.wait(if bit { A } else { C });
         self.set_high()?;
@@ -144,7 +134,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
 /// Byte operations
 impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
     /// Read 1-Wire data byte.
-    pub fn read_byte(&mut self) -> Result<u8, T::Error> {
+    pub fn read_byte(&mut self) -> Result<u8, Error<T::Error>> {
         let mut byte = 0;
         for _ in 0..u8::BITS {
             byte >>= 1;
@@ -155,7 +145,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
         Ok(byte)
     }
 
-    pub fn read_bytes(&mut self, bytes: &mut [u8]) -> Result<(), T::Error> {
+    pub fn read_bytes(&mut self, bytes: &mut [u8]) -> Result<(), Error<T::Error>> {
         for byte in bytes {
             *byte = self.read_byte()?;
         }
@@ -163,7 +153,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
     }
 
     /// Write 1-Wire data byte.
-    pub fn write_byte(&mut self, mut byte: u8) -> Result<(), T::Error> {
+    pub fn write_byte(&mut self, mut byte: u8) -> Result<(), Error<T::Error>> {
         for _ in 0..u8::BITS {
             self.write_bit(byte & 0x01 == 0x01)?;
             byte >>= 1;
@@ -171,7 +161,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
         Ok(())
     }
 
-    pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), T::Error> {
+    pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), Error<T::Error>> {
         for byte in bytes {
             self.write_byte(*byte)?;
         }

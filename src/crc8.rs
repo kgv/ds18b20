@@ -1,4 +1,4 @@
-pub use crate::{Error, Result};
+pub use crate::error::Ds18b20Error;
 
 /// Calculates the crc8 of the input data.
 ///
@@ -23,10 +23,10 @@ pub fn calculate(data: &[u8]) -> u8 {
 /// A nice property of this crc8 algorithm is that if you include the crc value
 /// in the data it will always return 0, so it's not needed to separate the data
 /// from the crc value
-pub fn check(data: &[u8]) -> Result<()> {
+pub fn check(data: &[u8]) -> Result<(), Ds18b20Error> {
     match calculate(data) {
         0 => Ok(()),
-        crc8 => Err(Error::MismatchedCrc { crc8 }),
+        crc8 => Err(Ds18b20Error::Crc { crc8 }),
     }
 }
 

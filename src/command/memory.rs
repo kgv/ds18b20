@@ -1,7 +1,7 @@
 use crate::{
     error::{Error, Result},
     scratchpad::Scratchpad,
-    Command, Driver, Pin,
+    Command, Driver,
 };
 use embedded_hal::delay::DelayNs;
 
