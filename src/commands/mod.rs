@@ -23,5 +23,5 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
     }
 }
 
-mod memory;
-mod rom;
+pub(crate) mod memory;
+pub(crate) mod rom;

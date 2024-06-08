@@ -1,5 +1,5 @@
 /// Configuration
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Configuration {
     /// A;.
     pub a: u32,
@@ -24,7 +24,7 @@ pub struct Configuration {
 }
 
 impl Configuration {
-    pub fn overdrive() -> Self {
+    pub const fn overdrive() -> Self {
         Self {
             a: 1_000,
             b: 7_500,
@@ -39,7 +39,7 @@ impl Configuration {
         }
     }
 
-    pub fn standard() -> Self {
+    pub const fn standard() -> Self {
         Self {
             a: 6_000,
             b: 64_000,
@@ -61,13 +61,13 @@ impl Default for Configuration {
     }
 }
 
-/// Speed
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum Speed {
-    #[default]
-    Standard,
-    Overdrive,
-}
+// /// Speed
+// #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+// pub enum Speed {
+//     #[default]
+//     Standard,
+//     Overdrive,
+// }
 
 // mod standard {
 //     pub(super) const A: u32 = 6;

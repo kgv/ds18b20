@@ -5,9 +5,14 @@
 #![no_std]
 #![feature(error_in_core)]
 
-pub use self::{error::Error, rom::Rom};
+pub use self::{
+    commands::{memory::MemoryCommands, rom::RomCommands},
+    configuration::Configuration,
+    error::Error,
+    rom::Rom,
+    scratchpad::Scratchpad,
+};
 
-use self::configuration::Configuration;
 use embedded_hal::{
     delay::DelayNs,
     digital::{ErrorType, InputPin, OutputPin},
@@ -163,7 +168,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
     }
 }
 
-pub mod command;
+pub mod commands;
 pub mod crc8;
 
 mod configuration;
