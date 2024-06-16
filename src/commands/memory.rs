@@ -92,7 +92,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> MemoryCommands<T> for Driv
         self.write_byte(COMMAND_MEMORY_SCRATCHPAD_WRITE)?;
         self.write_byte(scratchpad.triggers.high as _)?;
         self.write_byte(scratchpad.triggers.low as _)?;
-        self.write_byte(scratchpad.configuration_register.resolution as _)?;
+        self.write_byte(scratchpad.configuration_register.into())?;
         Ok(())
     }
 }

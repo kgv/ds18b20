@@ -19,8 +19,6 @@ pub enum Error<T> {
 /// Error
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum Ds18b20Error {
-    // #[error("invalid configuration register (resolution)")]
-    // ConfigurationRegister,
     #[error("the bus was expected to be pulled high by a ~5K ohm pull-up resistor, but it wasn't")]
     BusNotHigh,
     #[error("there are no devices attached to the 1-Wire bus")]

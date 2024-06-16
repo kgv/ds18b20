@@ -178,9 +178,9 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
 
 pub mod commands;
 pub mod crc8;
+pub mod error;
 pub mod scratchpad;
 
 mod configuration;
-mod error;
 mod rom;
 mod transactions;
