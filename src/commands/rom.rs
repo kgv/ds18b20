@@ -17,21 +17,54 @@ const NONE: (bool, bool) = (true, true);
 
 /// Rom commands
 pub trait RomCommands<T: ErrorType> {
+    /// Read ROM command
+    ///
+    /// This command allows the bus master to read the DS18B20’s 8-bit family
+    /// code, unique 48-bit serial number, and 8-bit CRC. This command can only
+    /// be used if there is a single DS18B20 on the bus. If more than one slave
+    /// is present on the bus, a data collision will occur when all slaves try
+    /// to transmit at the same time (open drain will produce a wired AND
+    /// result).
     fn read_rom(&mut self) -> Result<Rom, Error<T::Error>>;
+
+    /// Match ROM command
+    ///
+    /// The match ROM command, followed by a 64-bit ROM sequence, allows the bus
+    /// master to address a specific DS18B20 on a multidrop bus. Only the
+    /// DS18B20 that exactly matches the 64-bit ROM sequence will respond to the
+    /// following memory function command. All slaves that do not match the
+    /// 64-bit ROM sequence will wait for a reset pulse. This command can be
+    /// used with a single or multiple devices on the bus.
     fn match_rom(&mut self, rom: Rom) -> Result<(), Error<T::Error>>;
+
+    /// Skip ROM command
+    ///
+    /// This command can save time in a single drop bus system by allowing the
+    /// bus master to access the memory functions without providing the 64-bit
+    /// ROM code. If more than one slave is present on the bus and a Read
+    /// command is issued following the Skip ROM command, data collision will
+    /// occur on the bus as multiple slaves transmit simultaneously (open drain
+    /// pulldowns will produce a wired AND result).
     fn skip_rom(&mut self) -> Result<(), Error<T::Error>>;
+
+    /// Search ROM command
+    ///
+    /// When a system is initially brought up, the bus master might not know the
+    /// number of devices on the 1-Wire bus or their 64-bit ROM codes. The
+    /// search ROM command allows the bus master to use a process of elimination
+    /// to identify the 64-bit ROM codes of all slave devices on the bus.
     fn search_rom(&mut self) -> Result<Rom, Error<T::Error>>;
+
+    /// Search alarm command
+    ///
+    /// When a system is initially brought up, the bus master might not know the
+    /// number of devices on the 1-Wire bus or their 64-bit ROM codes. The
+    /// search ROM command allows the bus master to use a process of elimination
+    /// to identify the 64-bit ROM codes of all slave devices on the bus.
     fn search_alarm(&self) -> Result<(), Error<T::Error>>;
 }
 
 impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> RomCommands<T> for Driver<T, U> {
-    /// Read ROM command
-    ///
-    /// This command allows the bus master to read the DS18B20’s 8-bit family code,
-    /// unique 48-bit serial number, and 8-bit CRC. This command can only be used if
-    /// there is a single DS18B20 on the bus. If more than one slave is present on
-    /// the bus, a data collision will occur when all slaves try to transmit at the
-    /// same time (open drain will produce a wired AND result).
     fn read_rom(&mut self) -> Result<Rom, Error<T::Error>> {
         self.write_byte(COMMAND_ROM_READ)?;
         let mut bytes = [0; 8];
@@ -39,14 +72,6 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> RomCommands<T> for Driver<
         Ok(bytes.try_into()?)
     }
 
-    /// Match ROM command
-    ///
-    /// The match ROM command, followed by a 64-bit ROM sequence, allows the bus
-    /// master to address a specific DS18B20 on a multidrop bus. Only the DS18B20
-    /// that exactly matches the 64-bit ROM sequence will respond to the following
-    /// memory function command. All slaves that do not match the 64-bit ROM
-    /// sequence will wait for a reset pulse. This command can be used with a single
-    /// or multiple devices on the bus.
     fn match_rom(&mut self, rom: Rom) -> Result<(), Error<T::Error>> {
         self.write_byte(COMMAND_ROM_MATCH)?;
         let bytes: [u8; 8] = rom.into();
@@ -54,25 +79,11 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> RomCommands<T> for Driver<
         Ok(())
     }
 
-    /// Skip ROM command
-    ///
-    /// This command can save time in a single drop bus system by allowing the bus
-    /// master to access the memory functions without providing the 64-bit ROM code.
-    /// If more than one slave is present on the bus and a Read command is issued
-    /// following the Skip ROM command, data collision will occur on the bus as
-    /// multiple slaves transmit simultaneously (open drain pulldowns will produce a
-    /// wired AND result).
     fn skip_rom(&mut self) -> Result<(), Error<T::Error>> {
         self.write_byte(COMMAND_ROM_SKIP)?;
         Ok(())
     }
 
-    /// Search ROM command
-    ///
-    /// When a system is initially brought up, the bus master might not know the
-    /// number of devices on the 1-Wire bus or their 64-bit ROM codes. The search
-    /// ROM command allows the bus master to use a process of elimination to
-    /// identify the 64-bit ROM codes of all slave devices on the bus.
     fn search_rom(&mut self) -> Result<Rom, Error<T::Error>> {
         // All transactions on the 1-Wire bus begin with an initialization
         // sequence.
@@ -118,12 +129,6 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> RomCommands<T> for Driver<
         Ok(rom.try_into()?)
     }
 
-    /// Search alarm command
-    ///
-    /// When a system is initially brought up, the bus master might not know the
-    /// number of devices on the 1-Wire bus or their 64-bit ROM codes. The search
-    /// ROM command allows the bus master to use a process of elimination to
-    /// identify the 64-bit ROM codes of all slave devices on the bus.
     fn search_alarm(&self) -> Result<(), Error<T::Error>> {
         unimplemented!()
     }

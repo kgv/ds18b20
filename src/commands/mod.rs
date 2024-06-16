@@ -21,6 +21,16 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
         self.delay(self.configuration.j);
         Ok(presence)
     }
+    // fn wait_for_high(&mut self, delay: &mut impl DelayNs) -> OneWireResult<(), E> {
+    //     // wait up to 250 µs for the bus to become high (from the pull-up resistor)
+    //     for _ in 0..125 {
+    //         if self.is_bus_high()? {
+    //             return Ok(());
+    //         }
+    //         delay.delay_us(2);
+    //     }
+    //     Err(OneWireError::BusNotHigh)
+    // }
 }
 
 pub(crate) mod memory;

@@ -1,6 +1,4 @@
 //! Implementation of the 1-Wire protocol.
-//!
-//! [1-Wire](https://www.maximintegrated.com/en/design/technical-documents/app-notes/1/126.html)
 
 #![no_std]
 #![feature(error_in_core)]
@@ -170,9 +168,9 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
 
 pub mod commands;
 pub mod crc8;
+pub mod scratchpad;
 
 mod configuration;
 mod error;
 mod rom;
-mod scratchpad;
 mod transactions;

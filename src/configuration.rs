@@ -21,6 +21,10 @@ pub struct Configuration {
     pub i: u32,
     /// J; min: 480 - I μs.
     pub j: u32,
+    /// Up to 750 ms.
+    pub convert_temperature_delay: u32,
+    /// At least 10 ms.
+    pub copy_scratchpad_delay: u32,
 }
 
 impl Configuration {
@@ -36,6 +40,8 @@ impl Configuration {
             h: 70_000,
             i: 8_500,
             j: 40_000,
+            convert_temperature_delay: 750_000_000,
+            copy_scratchpad_delay: 10_000_000,
         }
     }
 
@@ -51,6 +57,8 @@ impl Configuration {
             h: 480_000,
             i: 70_000,
             j: 410_000,
+            convert_temperature_delay: 750_000_000,
+            copy_scratchpad_delay: 10_000_000,
         }
     }
 }

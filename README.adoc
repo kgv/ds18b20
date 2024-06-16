@@ -8,7 +8,6 @@ communication with all 1-Wire devices over various line conditions.
 
 ## See also
 
-- [1-Wire](https://www.analog.com/en/technical-articles/1wire-communication-through-software.html)
 - [embedded-hal](https://github.com/rust-embedded/embedded-hal)
 
 <!-- ## Quick Start
@@ -58,3 +57,14 @@ Found device at address 70000008AC851628 with family code: 0x28
 Found device at address 0B00000B20687E28 with family code: 0x28
 Found device at address 5700000B2015FF28 with family code: 0x28
 ``` -->
+
+== Links
+
+* link:https://www.analog.com/en/technical-articles/1wire-communication-through-software.html[1-Wire Communication Through Software]
+* link:https://www.analog.com/en/resources/technical-articles/using-a-uart-to-implement-a-1wire-bus-master.html[Using a UART to Implement a 1-Wire Bus Master]
+* link:https://stackoverflow.com/questions/39630565/one-wire-over-bit-banging-vs-one-wire-over-usart[one-wire over bit banging vs USART]
+* link:https://gist.github.com/ElectricImpSampleCode/c6981fcb9e30683ead8b[1-Wire over UART Examples]
+* link:https://developer.electricimp.com/resources/onewire[Implementing 1-Wire Buses In imp-enabled Devices]
+* link:
+
+* link:https://github.com/rust-embedded/embedded-hal/issues/54[1-wire API in embedded-hal]
