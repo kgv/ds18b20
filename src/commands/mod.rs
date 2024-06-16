@@ -1,4 +1,4 @@
-use crate::{Driver, Error};
+use crate::{Driver, Ds18b20Error, Error};
 use embedded_hal::{
     delay::DelayNs,
     digital::{ErrorType, InputPin, OutputPin},
@@ -13,6 +13,7 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
     /// by the slave(s). The presence pulse lets the bus master know that the
     /// DS18B20 is on the bus and is ready to operate.
     pub fn initialization(&mut self) -> Result<bool, Error<T::Error>> {
+        self.wait_for_high()?;
         self.set_low()?;
         self.delay(self.configuration.h);
         self.set_high()?;
@@ -21,16 +22,18 @@ impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
         self.delay(self.configuration.j);
         Ok(presence)
     }
-    // fn wait_for_high(&mut self, delay: &mut impl DelayNs) -> OneWireResult<(), E> {
-    //     // wait up to 250 µs for the bus to become high (from the pull-up resistor)
-    //     for _ in 0..125 {
-    //         if self.is_bus_high()? {
-    //             return Ok(());
-    //         }
-    //         delay.delay_us(2);
-    //     }
-    //     Err(OneWireError::BusNotHigh)
-    // }
+
+    /// wait up to 255 µs for the bus to become high (from the pull-up resistor)
+    fn wait_for_high(&mut self) -> Result<(), Error<T::Error>> {
+        // wait up to 250 µs for the bus to become high (from the pull-up resistor)
+        for _ in 0..125 {
+            if self.is_high()? {
+                return Ok(());
+            }
+            self.delay.delay_us(2);
+        }
+        Err(Ds18b20Error::BusNotHigh)?
+    }
 }
 
 pub(crate) mod memory;

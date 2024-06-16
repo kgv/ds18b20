@@ -50,6 +50,16 @@ pub struct Driver<T, U> {
     configuration: Configuration,
 }
 
+impl<T, U> Driver<T, U> {
+    pub fn configuration(&self) -> &Configuration {
+        &self.configuration
+    }
+
+    pub fn configuration_mut(&mut self) -> &mut Configuration {
+        &mut self.configuration
+    }
+}
+
 impl<T: InputPin + OutputPin + ErrorType, U: DelayNs> Driver<T, U> {
     pub fn new(pin: T, delay: U) -> Result<Self, Error<T::Error>> {
         let mut driver = Self {

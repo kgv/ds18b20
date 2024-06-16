@@ -5,7 +5,8 @@ pub(crate) const TEN: u8 = 0b00111111;
 pub(crate) const ELEVEN: u8 = 0b01011111;
 pub(crate) const TWELVE: u8 = 0b01111111;
 
-const CONVERSION_TIME: f32 = 750.0;
+/// Max conversion time, up to 750 ms.
+const CONVERSION_TIME_NS: u32 = 750_000_000;
 
 /// Scratchpad
 #[derive(Clone, Copy, Debug, Default)]
@@ -41,13 +42,13 @@ pub struct ConfigurationRegister {
 }
 
 impl ConfigurationRegister {
-    /// Max conversion time (ms)
-    pub fn conversion_time(&self) -> f32 {
+    /// Conversion time (ns)
+    pub fn conversion_time(&self) -> u32 {
         match self.resolution {
-            Resolution::Nine => CONVERSION_TIME / 8.0,
-            Resolution::Ten => CONVERSION_TIME / 4.0,
-            Resolution::Eleven => CONVERSION_TIME / 2.0,
-            Resolution::Twelve => CONVERSION_TIME,
+            Resolution::Nine => CONVERSION_TIME_NS / 8,
+            Resolution::Ten => CONVERSION_TIME_NS / 4,
+            Resolution::Eleven => CONVERSION_TIME_NS / 2,
+            Resolution::Twelve => CONVERSION_TIME_NS,
         }
     }
 }

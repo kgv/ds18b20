@@ -22,7 +22,7 @@ pub enum Ds18b20Error {
     // #[error("invalid configuration register (resolution)")]
     // ConfigurationRegister,
     #[error("the bus was expected to be pulled high by a ~5K ohm pull-up resistor, but it wasn't")]
-    NotHigh,
+    BusNotHigh,
     #[error("there are no devices attached to the 1-Wire bus")]
     NoAttachedDevices,
     #[error("timeout expired")]
