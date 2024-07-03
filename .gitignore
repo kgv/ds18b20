@@ -1,4 +1,4 @@
+.bk
 .vscode
-**/*.rs.bk
-/target
 Cargo.lock
+target
